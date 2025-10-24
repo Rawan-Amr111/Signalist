@@ -35,18 +35,28 @@ const SignUp = () => {
   });
   const onSubmit = async (data: SignUpFormData) => {
     try {
-      const result = await signUpWithEmail(data);
+      const result = await signUpWithEmail(data); // 1. في حالة النجاح (وده مش بيحصل على Vercel)
+
       if (result.success) {
-        router.push("/");
+        toast.success("Account created successfully!");
+        window.location.href = "/"; // هنستخدم ده عشان نضمن الـ redirect
+      } // 2. (ده كاشف الأخطاء) في حالة الفشل الهادئ (اللي بيحصل عندك)
+      else {
+        // هيقرأ رسالة الخطأ اللي جاية من السيرفر
+        const errorMessage =
+          result.error || "Failed to sign up. Please try again.";
+        toast.error("Something went wrong", {
+          description: errorMessage,
+        });
       }
     } catch (error) {
-      toast.error("Something went wrong", {
+      // 3. في حالة الكراش
+      toast.error("A critical error occurred", {
         description:
           error instanceof Error ? error.message : "failed to sign up",
       });
     }
   };
-
   return (
     <>
       <h1 className="form-title">Sign Up & Personalize</h1>
