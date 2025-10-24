@@ -36,17 +36,24 @@ const SignUp = () => {
   const onSubmit = async (data: SignUpFormData) => {
     try {
       const result = await signUpWithEmail(data);
+
       if (result.success) {
-        router.push("/");
+        toast.success("Account created successfully!");
+        window.location.href = "/";
+      } else {
+        const errorMessage =
+          result.error || "Failed to sign up. Please try again.";
+        toast.error("Something went wrong", {
+          description: errorMessage,
+        });
       }
     } catch (error) {
-      toast.error("Something went wrong", {
+      toast.error("A critical error occurred", {
         description:
           error instanceof Error ? error.message : "failed to sign up",
       });
     }
   };
-
   return (
     <>
       <h1 className="form-title">Sign Up & Personalize</h1>
