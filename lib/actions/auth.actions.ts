@@ -28,9 +28,15 @@ export const signUpWithEmail = async (data: SignUpFormData) => {
     }
     return { success: true, data: response };
   } catch (error) {
-    console.log("signup error", error);
+    // !!! ده أهم جزء !!!
+    // اتأكد إنك بترجع رسالة الإيرور الحقيقية
 
-    return { success: false, error: "Something went wrong" };
+    let errorMessage = "An unknown error occurred";
+    if (error instanceof Error) {
+      errorMessage = error.message; // ده هيجيب رسالة Nodemailer الحقيقية
+    }
+
+    return { success: false, error: errorMessage };
   }
 };
 export const signInWithEmail = async (data: SignInFormData) => {
