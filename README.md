@@ -2,7 +2,7 @@
 
 Signalist is an intelligent stock tracking and market analysis platform. It provides users with real-time stock data from Finnhub, the latest financial news, and AI-powered insights using Google's Gemini AI.
 
-
+[demo](https://signalist-lime.vercel.app/)
 
 ## 🚀 Key Features
 
