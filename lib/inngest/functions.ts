@@ -9,28 +9,40 @@ import { sendNewsSummaryEmail, sendWelcomeEmail } from "../nodemailer";
 import { getNews } from "../actions/finnhub.actions";
 import { getWatchlistSymbolsByEmail } from "../actions/watchlist.actions";
 import { formatDateToday } from "../utils";
+
 export interface UserForNewsEmail {
   id: string;
   email: string;
   name: string;
 }
+
 export const sendSignUpEmail = inngest.createFunction(
   {
-    id: "sign-up-email",
-  },
-  {
-    event: "app/user.created",
+    id: "user-created-flow",
+    name: "User Created Flow",
+    triggers: [{ event: "app/user.created" }],
   },
   async ({ event, step }) => {
+    const data = event.data as {
+      country: string;
+      investmentGoals: string;
+      riskTolerance: string;
+      preferredIndustry: string;
+      email: string;
+      name: string;
+    };
+
     const userProfile = `
-    -Country: ${event.data.country}
-    -Investment Goals: ${event.data.investmentGoals}
-    -Risk Tolerance: ${event.data.riskTolerance}
-    -Preferred Industry: ${event.data.preferredIndustry}`;
+    -Country: ${data.country}
+    -Investment Goals: ${data.investmentGoals}
+    -Risk Tolerance: ${data.riskTolerance}
+    -Preferred Industry: ${data.preferredIndustry}`;
+
     const prompt = PERSONALIZED_WELCOME_EMAIL_PROMPT.replace(
       "{{userProfile}}",
-      userProfile
+      userProfile,
     );
+
     const response = await step.ai.infer("generate-welcome-intro", {
       model: step.ai.models.gemini({
         model: "gemini-2.5-flash-lite",
@@ -45,6 +57,7 @@ export const sendSignUpEmail = inngest.createFunction(
         ],
       },
     });
+
     await step.run("send-welcome-email", async () => {
       const part = response.candidates?.[0]?.content?.parts?.[0];
       const introText =
@@ -52,30 +65,24 @@ export const sendSignUpEmail = inngest.createFunction(
         "Thanks for joining Signalist! As someone focused on technology growth stocks, you'll love our real-time alerts for companies like the ones you're tracking. We'll help you spot opportunities before they become mainstream news.";
 
       return await sendWelcomeEmail({
-        email: event.data.email,
-        name: event.data.name,
+        email: data.email,
+        name: data.name,
         intro: introText,
       });
     });
+
     return {
       success: true,
       message: "Email sent successfully",
     };
-  }
+  },
 );
-
 export const sendDailyNewsSummary = inngest.createFunction(
   {
     id: "send-daily-news-summary",
+    name: "Send Daily News Summary",
+    triggers: [{ event: "app/send.daily.news" }, { cron: "9 12 * * *" }],
   },
-  [
-    {
-      event: "app/send.daily.news",
-    },
-    {
-      cron: "9 12 * * *",
-    },
-  ],
   async ({ step }) => {
     const users = await step.run("get-all-users", getAllUsersForNewsEmail);
     if (!users || users.length === 0)
@@ -101,14 +108,17 @@ export const sendDailyNewsSummary = inngest.createFunction(
       }
       return perUser;
     });
-    const userNewsSummaries: { user: User; newsContent: string | null }[] = [];
+    const userNewsSummaries: {
+      user: UserForNewsEmail;
+      newsContent: string | null;
+    }[] = [];
     for (const { user, articles } of results) {
       try {
         const prompt = NEWS_SUMMARY_EMAIL_PROMPT.replace(
           "{{newsData}}",
-          JSON.stringify(articles, null, 2)
+          JSON.stringify(articles, null, 2),
         );
-        const response = await step.ai.infer("summarize-news-${user.email}", {
+        const response = await step.ai.infer(`summarize-news-${user.email}`, {
           model: step.ai.models.gemini({ model: "gemini-2.5-flash-lite" }),
           body: {
             contents: [
@@ -137,12 +147,12 @@ export const sendDailyNewsSummary = inngest.createFunction(
             date: formatDateToday,
             newsContent,
           });
-        })
+        }),
       );
     });
     return {
       success: true,
       message: "Email sent successfully",
     };
-  }
+  },
 );
