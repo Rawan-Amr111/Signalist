@@ -47,7 +47,6 @@ export const sendSignUpEmail = inngest.createFunction(
       model: step.ai.models.gemini({
         model: "gemini-2.5-flash-lite",
       }),
-
       body: {
         contents: [
           {
@@ -59,10 +58,20 @@ export const sendSignUpEmail = inngest.createFunction(
     });
 
     await step.run("send-welcome-email", async () => {
-      const part = response.candidates?.[0]?.content?.parts?.[0];
-      const introText =
-        (part && "text" in part ? part.text : null) ||
+      let introText =
         "Thanks for joining Signalist! As someone focused on technology growth stocks, you'll love our real-time alerts for companies like the ones you're tracking. We'll help you spot opportunities before they become mainstream news.";
+
+      if (response && typeof response === "object") {
+        const candidates = (
+          response as {
+            candidates?: Array<{ content?: { parts?: Array<unknown> } }>;
+          }
+        ).candidates;
+        const part = candidates?.[0]?.content?.parts?.[0];
+        if (part && typeof part === "object" && "text" in part) {
+          introText = (part as { text: string }).text;
+        }
+      }
 
       return await sendWelcomeEmail({
         email: data.email,
